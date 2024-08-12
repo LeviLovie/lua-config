@@ -1,6 +1,9 @@
 [package]
 name = "lua-config"
-version = "0.1.0"
+description = "A simple rust configuration tool using lua"
+license-file = "LICENSE"
+repository = "https://github.com/LeviLovie/lua-config"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
