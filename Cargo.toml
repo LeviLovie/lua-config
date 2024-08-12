@@ -1,0 +1,7 @@
+[package]
+name = "lua-config"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rlua = "0.20.1"
