@@ -1,4 +1,6 @@
 function Config()
+	print(fetch_data("https://yesno.wtf/api")["response"])
+
 	local config = {
 		width = 800,
 	}

@@ -176,16 +176,63 @@ impl LuaConfig {
     }
 
     fn declare_lua_functions(ctx: &rlua::Context) -> Result<(), rlua::Error> {
-        let globals = ctx.globals();
+        let _globals = ctx.globals();
 
-        let fetch_data = ctx.create_function(|lua_ctx, ()| {
-            let table = lua_ctx.create_table()?;
-            table.set("value", 200)?;
-            Ok(table)
-        })?;
-        globals.set("fetch_data", fetch_data)?;
+        #[cfg(feature = "fetch_data")]
+        {
+            let fetch_data = ctx.create_function(|lua_ctx, url: String| {
+                let response = reqwest::blocking::get(url).expect("Failed to fetch data");
+                let table = LuaConfig::lua_table_from_json(lua_ctx, &response.text().unwrap())
+                    .expect("Failed to convert JSON to Lua table");
+                Ok(table)
+            })?;
+            _globals.set("fetch_data", fetch_data)?;
+        }
 
         Ok(())
+    }
+
+    fn lua_table_from_json<'lua>(
+        lua: &'lua rlua::Lua,
+        json: &str,
+    ) -> Result<rlua::Table<'lua>, Box<dyn Error>> {
+        let json = json::parse(json)?;
+
+        fn convert_json_to_lua<'lua>(
+            lua: &'lua rlua::Lua,
+            json_value: &json::JsonValue,
+        ) -> Result<rlua::Value<'lua>, Box<dyn Error>> {
+            match json_value {
+                json::JsonValue::Null => Ok(rlua::Value::Nil),
+                json::JsonValue::String(s) => Ok(rlua::Value::String(lua.create_string(s)?)),
+                //json::JsonValue::Number(n) => Ok(rlua::Value::Number(
+                //)),
+                json::JsonValue::Boolean(b) => Ok(rlua::Value::Boolean(*b)),
+                json::JsonValue::Object(obj) => {
+                    let table = lua.create_table()?;
+                    for (key, value) in obj.iter() {
+                        table.set(key, convert_json_to_lua(lua, value)?)?;
+                    }
+                    Ok(rlua::Value::Table(table))
+                }
+                json::JsonValue::Array(arr) => {
+                    let table = lua.create_table()?;
+                    for (i, value) in arr.iter().enumerate() {
+                        table.set(i + 1, convert_json_to_lua(lua, value)?)?;
+                    }
+                    Ok(rlua::Value::Table(table))
+                }
+                _ => unimplemented!("This datatype is not implemented yet"),
+            }
+        }
+
+        let lua_value = convert_json_to_lua(lua, &json)?;
+
+        if let rlua::Value::Table(table) = lua_value {
+            Ok(table)
+        } else {
+            Err("Root element is not a table".into())
+        }
     }
 
     fn get_hashmap_by_function<'lua>(
