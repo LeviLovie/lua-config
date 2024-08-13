@@ -169,7 +169,7 @@ impl LuaConfig {
     {
         let data = self.data.get(key);
         match data {
-            Some(value) => value.get(),
+            Some(value) => value.to(),
             None => None,
         }
     }
