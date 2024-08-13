@@ -1,3 +1,8 @@
+[![Rust](https://github.com/LeviLovie/lua-config/actions/workflows/rust.yml/badge.svg)](https://github.com/LeviLovie/lua-config/actions)
+[![Documentation](https://docs.rs/lua-config/badge.svg)](https://docs.rs/lua-config)
+[![Latest version](https://img.shields.io/crates/v/lua-config.svg)](https://crates.io/crates/lua-config)
+![License](https://img.shields.io/crates/l/lua-config.svg)
+
 # lua-config
 A simple rust configuration tool using lua.
 
