@@ -16,7 +16,7 @@ end
 As you can see the `height` value is calculated on the fly depending on the `width`.
 
 ## How to use
-Install using `cargo add lua-config`.
+Install using `cargo add lua_config`.
 Create a file for the default configuration, for example is:
 ```lua
 function Default()
