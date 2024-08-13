@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::str::from_utf8;
 
 #[derive(Debug, Clone)]
@@ -112,39 +113,33 @@ pub struct LuaConfig {
 }
 
 impl LuaConfig {
-    pub fn from_string(file: String, default: &[u8]) -> Self {
-        let default: String = from_utf8(default).unwrap().to_string();
+    pub fn from_string(file: String, default: &[u8]) -> Result<Self, Box<dyn Error>> {
+        let default: String = from_utf8(default)?.to_string();
         let mut lua_config = LuaConfig {
             data: std::collections::HashMap::new(),
         };
-        lua_config.init(file, default);
-        lua_config
+        lua_config.init(file, default)?;
+        Ok(lua_config)
     }
 
-    pub fn from_file(path: &str, default: &[u8]) -> Self {
-        let file = std::fs::read_to_string(path).unwrap();
-        let default: String = from_utf8(default).unwrap().to_string();
-        let mut lua_config = LuaConfig {
-            data: std::collections::HashMap::new(),
-        };
-        lua_config.init(file, default);
-        lua_config
+    pub fn from_file(path: &str, default: &[u8]) -> Result<Self, Box<dyn Error>> {
+        let file = std::fs::read_to_string(path)?;
+        Ok(LuaConfig::from_string(file, default)?)
     }
 
-    pub fn init(&mut self, config: String, default: String) {
+    pub fn init(&mut self, config: String, default: String) -> Result<(), Box<dyn Error>> {
         let lua = rlua::Lua::new();
 
-        let default_values = LuaConfig::get_hashmap_by_function(&lua, &default, "Default");
-        let config_values = LuaConfig::get_hashmap_by_function(&lua, &config, "Config");
+        let default_values = LuaConfig::get_hashmap_by_function(&lua, &default, "Default")?;
+        let config_values = LuaConfig::get_hashmap_by_function(&lua, &config, "Config")?;
 
-        // for (key, _value) in config_values.iter() {
-        //     if !default_values.contains_key(key) {
-        //         println!(
-        //             "Config value \"{}\" is not in the default values, it will be skipped :(",
-        //             key
-        //        );
-        //     }
-        // }
+        for (key, _value) in config_values.iter() {
+            if !default_values.contains_key(key) {
+                return Err(
+                    format!("Config value \"{}\" is not in the default values", key).into(),
+                );
+            }
+        }
 
         let mut resulting_config_values: std::collections::HashMap<String, rlua::Value> =
             std::collections::HashMap::new();
@@ -161,6 +156,8 @@ impl LuaConfig {
         }
 
         self.data = self.convert_map(resulting_config_values);
+
+        Ok(())
     }
 
     pub fn get<T>(&self, key: &str) -> Option<T>
@@ -178,41 +175,53 @@ impl LuaConfig {
         self.data.get(key)
     }
 
+    fn declare_lua_functions(ctx: &rlua::Context) -> Result<(), rlua::Error> {
+        let globals = ctx.globals();
+
+        let fetch_data = ctx.create_function(|lua_ctx, ()| {
+            let table = lua_ctx.create_table()?;
+            table.set("value", 200)?;
+            Ok(table)
+        })?;
+        globals.set("fetch_data", fetch_data)?;
+
+        Ok(())
+    }
+
     fn get_hashmap_by_function<'lua>(
         lua: &'lua rlua::Lua,
         code: &str,
         function_name: &str,
-    ) -> std::collections::HashMap<String, rlua::Value<'lua>> {
+    ) -> Result<std::collections::HashMap<String, rlua::Value<'lua>>, Box<dyn Error>> {
         let ctx = lua.load(code);
-        ctx.exec().unwrap();
+        LuaConfig::declare_lua_functions(&lua).unwrap();
+
+        ctx.exec()?;
         let globals = lua.globals();
         let func = match globals.get::<_, rlua::Function>(function_name) {
             Ok(f) => f,
             Err(e) => {
-                eprintln!("Error getting function {}: {}", function_name, e);
-                std::process::exit(1);
+                return Err(format!("Error getting function {}: {}", function_name, e).into());
             }
         };
         let table = match func.call::<_, rlua::Table>(()) {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("Error calling function {}: {}", function_name, e);
-                std::process::exit(1);
+                return Err(format!("Error calling function {}: {}", function_name, e).into());
             }
         };
 
         if table.is_empty() {
-            eprintln!("Default function return table is empty");
-            std::process::exit(1);
+            return Err(format!("Function {} returned an empty table", function_name).into());
         }
 
         let mut values = std::collections::HashMap::new();
         for pair in table.pairs::<String, rlua::Value>() {
-            let (key, value) = pair.unwrap();
+            let (key, value) = pair?;
             values.insert(key, value);
         }
 
-        values
+        Ok(values)
     }
 
     fn value_to_lua_type(&self, value: &rlua::Value) -> LuaType {
@@ -231,7 +240,7 @@ impl LuaConfig {
                 }
                 LuaType::Table(map)
             }
-            _ => unimplemented!("Conversion for this Lua type is not implemented yet"), // Handle other types as needed
+            _ => unimplemented!("Conversion for this Lua type is not implemented yet"),
         }
     }
 
