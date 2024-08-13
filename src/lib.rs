@@ -11,7 +11,7 @@ pub enum LuaType {
 }
 
 impl LuaType {
-    pub fn get<T>(&self) -> Option<T>
+    pub fn to<T>(&self) -> Option<T>
     where
         T: LuaConvert,
     {
