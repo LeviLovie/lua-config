@@ -1,8 +1,8 @@
 # lua-config
-A simple rust configuration tool using lua
+A simple rust configuration tool using lua.
 
 ## Idea
-I always ahve trouble configuring my rust applications. I wanted to try out lua as a tool for configurations as i could also do some logic while the config is beening read. For example:
+I always have trouble configuring my rust applications. I wanted to try out lua as a tool for configurations as I could also do some logic while the config is beeing read. For example:
 ```lua
 function Config()
 	local config = {
@@ -27,7 +27,7 @@ function Default()
 	}
 end
 ```
-Than create a file for your configuration. This file should be alongside the application, if you are distrivuting your project, you will want to also distribute this file alongside the app. This can be done manually or automated with `build.rs`. For example:
+Than create a file for your configuration. This file should be alongside the application, if you are distributing your project, you will want to also distribute this file alongside the app. This can be done manually or automated with `build.rs`. For example:
 ```lua
 function Config()
 	local config = {
