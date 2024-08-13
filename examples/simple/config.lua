@@ -1,3 +1,5 @@
+local http = require("socket")
+
 function Config()
 	local config = {
 		width = 800,
