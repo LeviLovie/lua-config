@@ -108,7 +108,6 @@ impl std::fmt::Display for LuaType {
 }
 
 pub struct LuaConfig {
-    pub path: String,
     pub data: std::collections::HashMap<String, LuaType>,
 }
 
@@ -116,7 +115,6 @@ impl LuaConfig {
     pub fn from_string(file: String, default: &[u8]) -> Self {
         let default: String = from_utf8(default).unwrap().to_string();
         let mut lua_config = LuaConfig {
-            path: "File from String".to_string(),
             data: std::collections::HashMap::new(),
         };
         lua_config.init(file, default);
@@ -127,7 +125,6 @@ impl LuaConfig {
         let file = std::fs::read_to_string(path).unwrap();
         let default: String = from_utf8(default).unwrap().to_string();
         let mut lua_config = LuaConfig {
-            path: "File from String".to_string(),
             data: std::collections::HashMap::new(),
         };
         lua_config.init(file, default);
@@ -189,8 +186,20 @@ impl LuaConfig {
         let ctx = lua.load(code);
         ctx.exec().unwrap();
         let globals = lua.globals();
-        let func = globals.get::<_, rlua::Function>(function_name).unwrap();
-        let table = func.call::<_, rlua::Table>(()).unwrap();
+        let func = match globals.get::<_, rlua::Function>(function_name) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Error getting function {}: {}", function_name, e);
+                std::process::exit(1);
+            }
+        };
+        let table = match func.call::<_, rlua::Table>(()) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("Error calling function {}: {}", function_name, e);
+                std::process::exit(1);
+            }
+        };
 
         if table.is_empty() {
             eprintln!("Default function return table is empty");
