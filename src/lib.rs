@@ -10,6 +10,79 @@ pub enum LuaType {
     Table(std::collections::HashMap<String, LuaType>),
 }
 
+impl LuaType {
+    pub fn get<T>(&self) -> Option<T>
+    where
+        T: LuaConvert,
+    {
+        T::from_lua_type(self)
+    }
+}
+
+pub trait LuaConvert: Sized {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self>;
+}
+
+impl LuaConvert for i32 {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
+        match lua_type {
+            LuaType::Integer(i) => i32::try_from(*i).ok(),
+            LuaType::Number(n) => Some(*n as i32),
+            _ => None,
+        }
+    }
+}
+
+impl LuaConvert for i64 {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
+        match lua_type {
+            LuaType::Integer(i) => Some(*i),
+            LuaType::Number(n) => Some(*n as i64),
+            _ => None,
+        }
+    }
+}
+
+impl LuaConvert for f64 {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
+        match lua_type {
+            LuaType::Number(n) => Some(*n),
+            LuaType::Integer(i) => Some(*i as f64),
+            _ => None,
+        }
+    }
+}
+
+impl LuaConvert for bool {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
+        if let LuaType::Boolean(b) = lua_type {
+            Some(*b)
+        } else {
+            None
+        }
+    }
+}
+
+impl LuaConvert for String {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
+        if let LuaType::String(s) = lua_type {
+            Some(s.clone())
+        } else {
+            None
+        }
+    }
+}
+
+impl LuaConvert for std::collections::HashMap<String, LuaType> {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
+        if let LuaType::Table(table) = lua_type {
+            Some(table.clone())
+        } else {
+            None
+        }
+    }
+}
+
 fn print_lua_type(value: LuaType, f: &mut std::fmt::Formatter, depth: usize) -> std::fmt::Result {
     match value {
         LuaType::Nil => write!(f, "nil"),
@@ -50,7 +123,7 @@ impl LuaConfig {
         lua_config
     }
 
-    pub fn from_file(path: String, default: &[u8]) -> Self {
+    pub fn from_file(path: &str, default: &[u8]) -> Self {
         let file = std::fs::read_to_string(path).unwrap();
         let default: String = from_utf8(default).unwrap().to_string();
         let mut lua_config = LuaConfig {
@@ -93,7 +166,18 @@ impl LuaConfig {
         self.data = self.convert_map(resulting_config_values);
     }
 
-    pub fn get(&self, key: &str) -> Option<&LuaType> {
+    pub fn get<T>(&self, key: &str) -> Option<T>
+    where
+        T: LuaConvert,
+    {
+        let data = self.data.get(key);
+        match data {
+            Some(value) => value.get(),
+            None => None,
+        }
+    }
+
+    pub fn get_lua_type<T>(&self, key: &str) -> Option<&LuaType> {
         self.data.get(key)
     }
 
