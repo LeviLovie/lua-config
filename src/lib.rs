@@ -186,21 +186,7 @@ impl LuaConfig {
     }
 
     pub fn get_lua_type(&self, key: &str) -> Option<&LuaType> {
-        let mut map = &self.data;
-        for k in key.split('/') {
-            map = match map.get(k) {
-                Some(value) => {
-                    if let LuaType::Table(m) = value {
-                        m
-                    } else {
-                        return None;
-                    }
-                }
-                None => return None,
-            };
-        }
-
-        None
+        self.data.get(key)
     }
 
     fn declare_lua_functions(ctx: &rlua::Context) -> Result<(), rlua::Error> {
