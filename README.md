@@ -46,10 +46,12 @@ end
 Now you can use the configuration in your rusty code:
 ```rust
 fn main() {
-    let config = lua_config::LuaConfig::from_file(
-        "config.lua",
-        include_bytes!("../default_config.lua")
-    );
+    let config = lua_config::LuaConfig::from_file("config.lua")
+        .expect("Failed to load config")
+        .with_default(include_bytes!("../default_config.lua"))
+        .expect("Failed to load default config")
+        .execute()
+        .expect("Failed to execute config");
 
     println!("Width: {}\n", config.get::<i32>("width").unwrap());
     println!("Height: {}\n", config.get::<i32>("height").unwrap());
