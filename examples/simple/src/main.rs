@@ -1,14 +1,10 @@
 fn main() {
-    // let config = lua_config::LuaConfig::from_file(
-    //     "config.lua",
-    //     "function Config() return { value = 200 } end".as_bytes(),
-    // );
+    let config = lua_config::LuaConfig::from_file("config.lua")
+        .expect("Failed to load config")
+        .with_default(include_bytes!("../default_config.lua"))
+        .expect("Failed to load default config")
+        .execute()
+        .expect("Failed to execute config");
 
-    let config =
-        lua_config::LuaConfig::from_file("config.lua", include_bytes!("../default_config.lua"))
-            .expect("Failed to load config");
-
-    println!("Width: {}\n", config.get::<i32>("width").unwrap());
-    println!("Height: {}\n", config.get::<i32>("height").unwrap());
     println!("Config:\n{}", config);
 }
