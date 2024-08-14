@@ -1,0 +1,51 @@
+use lua_config::{LuaConfig, LuaTable};
+use raylib::prelude::*;
+
+fn main() {
+    let config = LuaConfig::from_file("./data/config.lua")
+        .expect("Failed to load config")
+        .with_default(include_bytes!("../include/config.default.lua"))
+        .expect("Failed to load default config")
+        .execute()
+        .expect("Failed to execute config");
+
+    let (mut rl, thread) = raylib::init()
+        .size(
+            config
+                .get::<LuaTable>("window")
+                .unwrap()
+                .get("width")
+                .unwrap()
+                .to::<i32>()
+                .unwrap(),
+            config
+                .get::<LuaTable>("window")
+                .unwrap()
+                .get("height")
+                .unwrap()
+                .to::<i32>()
+                .unwrap(),
+        )
+        .title(
+            &config
+                .get::<LuaTable>("window")
+                .unwrap()
+                .get("Title")
+                .unwrap()
+                .to::<String>()
+                .unwrap(),
+        )
+        .build();
+
+    println!("Config:\n{}", config);
+    println!(
+        "Window width: {}",
+        config
+            .get::<LuaTable>("window")
+            .unwrap()
+            .get("width")
+            .unwrap()
+            .to::<i32>()
+            .unwrap()
+    );
+}
