@@ -5,8 +5,12 @@ authors = ["https://github.com/LeviLovie/"]
 license = "MIT"
 keywords = ["configuration", "lua"]
 repository = "https://github.com/LeviLovie/lua-config"
-version = "1.1.2"
+version = "1.2.0"
 edition = "2021"
 
 [dependencies]
 rlua = "0.20.1"
+reqwest = {version = "0.12.5", features = ["blocking"]}
+serde = {version = "1.0.207", features = ["derive"]}
+serde_json = {version = "1.0"}
+json = "0.12.4"
