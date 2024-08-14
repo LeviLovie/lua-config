@@ -8,8 +8,10 @@ pub enum LuaType {
     Integer(i64),
     Number(f64),
     String(String),
-    Table(std::collections::HashMap<String, LuaType>),
+    Table(LuaTable),
 }
+
+pub type LuaTable = std::collections::HashMap<String, LuaType>;
 
 impl LuaType {
     pub fn to<T>(&self) -> Option<T>
@@ -74,7 +76,7 @@ impl LuaConvert for String {
     }
 }
 
-impl LuaConvert for std::collections::HashMap<String, LuaType> {
+impl LuaConvert for LuaTable {
     fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
         if let LuaType::Table(table) = lua_type {
             Some(table.clone())
@@ -109,7 +111,7 @@ impl std::fmt::Display for LuaType {
 }
 
 pub struct LuaConfig {
-    pub data: std::collections::HashMap<String, LuaType>,
+    pub data: LuaTable,
     config: String,
     default: Option<String>,
 }
@@ -136,8 +138,6 @@ impl LuaConfig {
     pub fn execute(mut self) -> Result<Self, Box<dyn Error>> {
         let lua = rlua::Lua::new();
         let config_values = LuaConfig::get_hashmap_by_function(&lua, &self.config, "Config")?;
-        let mut resulting_values: std::collections::HashMap<String, rlua::Value> =
-            std::collections::HashMap::new();
 
         if self.default.is_some() {
             let default_values = LuaConfig::get_hashmap_by_function(
@@ -146,30 +146,59 @@ impl LuaConfig {
                 "Default",
             )?;
 
-            for (key, _value) in config_values.iter() {
-                if !default_values.contains_key(key) {
-                    return Err(
-                        format!("Config value \"{}\" is not in the default values", key).into(),
-                    );
+            // Recursivly return error if any value in the config_values is not present in the default_values
+            fn check_config_table(
+                config: &std::collections::HashMap<String, LuaType>,
+                default: &std::collections::HashMap<String, LuaType>,
+            ) -> Result<(), Box<dyn Error>> {
+                for (key, value) in config.iter() {
+                    if let Some(default_value) = default.get(key) {
+                        match value {
+                            LuaType::Table(table) => {
+                                if let LuaType::Table(default_table) = default_value {
+                                    check_config_table(table, default_table)?;
+                                } else {
+                                    return Err(format!("Key {} is not a table", key).into());
+                                }
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        return Err(format!("Key {} not found in default config", key).into());
+                    }
                 }
+                Ok(())
+            }
+            check_config_table(&config_values, &default_values)?;
+
+            // Recursivly merge the default_values into the config_values
+            fn merge_tables(
+                config: std::collections::HashMap<String, LuaType>,
+                default: std::collections::HashMap<String, LuaType>,
+            ) -> std::collections::HashMap<String, LuaType> {
+                let mut result = default.clone();
+                for (key, value) in config {
+                    match value {
+                        LuaType::Table(table) => {
+                            if let LuaType::Table(default_table) = default.get(&key).unwrap() {
+                                result.insert(
+                                    key,
+                                    LuaType::Table(merge_tables(table, default_table.clone())),
+                                );
+                            }
+                        }
+                        _ => {
+                            result.insert(key, value);
+                        }
+                    }
+                }
+                result
             }
 
-            for (key, value) in default_values.iter() {
-                let config_value = config_values.get(key);
-                match config_value {
-                    Some(conf_value) => {
-                        resulting_values.insert(key.to_string(), conf_value.clone());
-                    }
-                    None => {
-                        resulting_values.insert(key.to_string(), value.clone());
-                    }
-                }
-            }
+            self.data = merge_tables(config_values, default_values);
         } else {
-            resulting_values = config_values;
+            self.data = config_values;
         }
-
-        self.data = self.convert_map(resulting_values);
 
         Ok(self)
     }
@@ -252,7 +281,7 @@ impl LuaConfig {
         lua: &'lua rlua::Lua,
         code: &str,
         function_name: &str,
-    ) -> Result<std::collections::HashMap<String, rlua::Value<'lua>>, Box<dyn Error>> {
+    ) -> Result<std::collections::HashMap<String, LuaType>, Box<dyn Error>> {
         let ctx = lua.load(code);
         LuaConfig::declare_lua_functions(&lua).unwrap();
 
@@ -278,13 +307,14 @@ impl LuaConfig {
         let mut values = std::collections::HashMap::new();
         for pair in table.pairs::<String, rlua::Value>() {
             let (key, value) = pair?;
+            let value = LuaConfig::value_to_lua_type(&value);
             values.insert(key, value);
         }
 
         Ok(values)
     }
 
-    fn value_to_lua_type(&self, value: &rlua::Value) -> LuaType {
+    fn value_to_lua_type(value: &rlua::Value) -> LuaType {
         match value {
             rlua::Value::Nil => LuaType::Nil,
             rlua::Value::Boolean(b) => LuaType::Boolean(*b),
@@ -295,24 +325,13 @@ impl LuaConfig {
                 let mut map = std::collections::HashMap::new();
                 for pair in table.clone().pairs::<String, rlua::Value>() {
                     if let Ok((key, value)) = pair {
-                        map.insert(key, self.value_to_lua_type(&value));
+                        map.insert(key, LuaConfig::value_to_lua_type(&value));
                     }
                 }
                 LuaType::Table(map)
             }
             _ => unimplemented!("Conversion for this Lua type is not implemented yet"),
         }
-    }
-
-    fn convert_map(
-        &self,
-        lua_map: std::collections::HashMap<String, rlua::Value>,
-    ) -> std::collections::HashMap<String, LuaType> {
-        let mut result = std::collections::HashMap::new();
-        for (key, value) in lua_map {
-            result.insert(key, self.value_to_lua_type(&value));
-        }
-        result
     }
 }
 
