@@ -12,14 +12,14 @@ fn main() {
     let (mut rl, thread) = raylib::init()
         .size(
             config
-                .get::<LuaTable>("window")
+                .get("window")
                 .unwrap()
                 .get("width")
                 .unwrap()
                 .to::<i32>()
                 .unwrap(),
             config
-                .get::<LuaTable>("window")
+                .get("window")
                 .unwrap()
                 .get("height")
                 .unwrap()
@@ -28,7 +28,7 @@ fn main() {
         )
         .title(
             config
-                .get::<LuaTable>("window")
+                .get("window")
                 .unwrap()
                 .get("title")
                 .unwrap()
@@ -39,28 +39,28 @@ fn main() {
         .build();
 
     let x = config
-        .get::<LuaTable>("graphics")
+        .get("graphics")
         .unwrap()
         .get("x")
         .unwrap()
         .to::<i32>()
         .unwrap();
     let y = config
-        .get::<LuaTable>("graphics")
+        .get("graphics")
         .unwrap()
         .get("y")
         .unwrap()
         .to::<i32>()
         .unwrap();
     let width = config
-        .get::<LuaTable>("graphics")
+        .get("graphics")
         .unwrap()
         .get("width")
         .unwrap()
         .to::<i32>()
         .unwrap();
     let height = config
-        .get::<LuaTable>("graphics")
+        .get("graphics")
         .unwrap()
         .get("height")
         .unwrap()

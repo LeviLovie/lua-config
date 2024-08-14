@@ -11,8 +11,8 @@ mod lua_config {
                 .execute()
                 .expect("Failed to execute config");
 
-            assert_eq!(config.get::<i32>("value"), Some(2));
-            assert_eq!(config.get::<i32>("another_value"), Some(1));
+            assert_eq!(config.get("value").unwrap().to::<i32>(), Some(2));
+            assert_eq!(config.get("another_value").unwrap().to::<i32>(), Some(1));
         }
 
         #[test]
@@ -24,8 +24,8 @@ mod lua_config {
                 .execute()
                 .expect("Failed to execute config");
 
-            assert_eq!(config.get::<f64>("value"), Some(3.1415));
-            assert_eq!(config.get::<f64>("another_value"), Some(3.56));
+            assert_eq!(config.get("value").unwrap().to::<f32>(), Some(3.1415));
+            assert_eq!(config.get("another_value").unwrap().to::<f32>(), Some(3.56));
         }
 
         #[test]
@@ -37,9 +37,12 @@ mod lua_config {
                 .execute()
                 .expect("Failed to execute config");
 
-            assert_eq!(config.get::<String>("value"), Some("Hello!".to_string()));
             assert_eq!(
-                config.get::<String>("another_value"),
+                config.get("value").unwrap().to::<String>(),
+                Some("Hello!".to_string())
+            );
+            assert_eq!(
+                config.get("another_value").unwrap().to::<String>(),
                 Some("Hello, Everyone!".to_string())
             );
         }
@@ -53,25 +56,14 @@ mod lua_config {
                 .execute()
                 .expect("Failed to execute config");
 
-            assert_eq!(config.get::<bool>("value"), Some(false));
-            assert_eq!(config.get::<bool>("another_value"), Some(true));
+            assert_eq!(config.get("value").unwrap().to::<bool>(), Some(false));
+            assert_eq!(
+                config.get("another_value").unwrap().to::<bool>(),
+                Some(true)
+            );
         }
     }
 
-    // function Default()
-    //   return {
-    //     value = 1,
-    //     another_value = 2,
-    //     second_level = {
-    //       value = 3,
-    //       another_value = 4,
-    //       third_level = {
-    //         value = 5,
-    //         another_value = 6
-    //       }
-    //     }
-    //   }
-    // end
     #[test]
     fn complex() {
         let config = lua_config::LuaConfig::from_file("./tests/data/complex.lua")
@@ -81,9 +73,9 @@ mod lua_config {
             .execute()
             .expect("Failed to execute config");
 
-        assert_eq!(config.get::<i32>("value"), Some(2));
-        assert_eq!(config.get::<i32>("another_value"), Some(2));
-        let second_level = config.get::<lua_config::LuaTable>("second_level").unwrap();
+        assert_eq!(config.get("value").unwrap().to::<i32>(), Some(2));
+        assert_eq!(config.get("another_value").unwrap().to::<i32>(), Some(2));
+        let second_level = config.get("second_level").unwrap();
         assert_eq!(second_level.get("value").unwrap().to::<i32>(), Some(4));
         assert_eq!(
             second_level.get("another_value").unwrap().to::<i32>(),
@@ -108,6 +100,6 @@ mod lua_config {
     //         .execute()
     //         .expect("Failed to execute config");
     //
-    //     assert_ne!(config.get::<String>("data/1"), None);
+    //     assert_ne!(config.get("data/1"), None);
     // }
 }

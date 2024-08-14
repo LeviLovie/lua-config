@@ -4,5 +4,14 @@ fn main() {
         .execute()
         .expect("Failed to execute config");
 
-    println!("Config:\n{}", config);
+    println!(
+        "A random fact about kittens: {}",
+        config
+            .get("data")
+            .unwrap()
+            .get("1")
+            .unwrap()
+            .to::<String>()
+            .unwrap()
+    );
 }

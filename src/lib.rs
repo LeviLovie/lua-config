@@ -20,6 +20,14 @@ impl LuaType {
     {
         T::from_lua_type(self)
     }
+
+    pub fn get(&self, key: &str) -> Option<&LuaType> {
+        if let LuaType::Table(table) = self {
+            table.get(key)
+        } else {
+            None
+        }
+    }
 }
 
 pub trait LuaConvert: Sized {
@@ -31,6 +39,16 @@ impl LuaConvert for i32 {
         match lua_type {
             LuaType::Integer(i) => i32::try_from(*i).ok(),
             LuaType::Number(n) => Some(*n as i32),
+            _ => None,
+        }
+    }
+}
+
+impl LuaConvert for f32 {
+    fn from_lua_type(lua_type: &LuaType) -> Option<Self> {
+        match lua_type {
+            LuaType::Integer(i) => Some(*i as f32),
+            LuaType::Number(n) => Some(*n as f32),
             _ => None,
         }
     }
@@ -203,15 +221,8 @@ impl LuaConfig {
         Ok(self)
     }
 
-    pub fn get<T>(&self, key: &str) -> Option<T>
-    where
-        T: LuaConvert,
-    {
-        let data = self.get_lua_type(key);
-        match data {
-            Some(value) => value.to(),
-            None => None,
-        }
+    pub fn get(&self, key: &str) -> Option<&LuaType> {
+        self.get_lua_type(key)
     }
 
     pub fn get_lua_type(&self, key: &str) -> Option<&LuaType> {
@@ -242,7 +253,6 @@ impl LuaConfig {
             lua: &'lua rlua::Lua,
             json_value: &json::JsonValue,
         ) -> Result<rlua::Value<'lua>, Box<dyn Error>> {
-            println!("{:?}", json_value);
             match json_value {
                 json::JsonValue::Null => Ok(rlua::Value::Nil),
                 json::JsonValue::String(s) => Ok(rlua::Value::String(lua.create_string(s)?)),
