@@ -12,7 +12,7 @@ pub enum LuaType {
 }
 
 impl LuaType {
-    pub fn get<T>(&self) -> Option<T>
+    pub fn to<T>(&self) -> Option<T>
     where
         T: LuaConvert,
     {
@@ -180,7 +180,7 @@ impl LuaConfig {
     {
         let data = self.get_lua_type(key);
         match data {
-            Some(value) => value.get(),
+            Some(value) => value.to(),
             None => None,
         }
     }
