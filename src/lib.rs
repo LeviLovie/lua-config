@@ -14,6 +14,7 @@ pub enum LuaType {
 pub type LuaTable = std::collections::HashMap<String, LuaType>;
 
 impl LuaType {
+    #[cfg(not(feature = "crash_on_none"))]
     pub fn to<T>(&self) -> Option<T>
     where
         T: LuaConvert,
@@ -21,11 +22,38 @@ impl LuaType {
         T::from_lua_type(self)
     }
 
+    #[cfg(feature = "crash_on_none")]
+    pub fn to<T>(&self) -> T
+    where
+        T: LuaConvert,
+    {
+        match T::from_lua_type(self) {
+            Some(value) => value,
+            None => panic!(
+                "Failed to convert LuaType to {}",
+                std::any::type_name::<T>()
+            ),
+        }
+    }
+
+    #[cfg(not(feature = "crash_on_none"))]
     pub fn get(&self, key: &str) -> Option<&LuaType> {
         if let LuaType::Table(table) = self {
             table.get(key)
         } else {
             None
+        }
+    }
+
+    #[cfg(feature = "crash_on_none")]
+    pub fn get(&self, key: &str) -> &LuaType {
+        if let LuaType::Table(table) = self {
+            match table.get(key) {
+                Some(value) => value,
+                None => panic!("Key {} not found in table", key),
+            }
+        } else {
+            panic!("Value is not a table");
         }
     }
 }
@@ -221,8 +249,17 @@ impl LuaConfig {
         Ok(self)
     }
 
+    #[cfg(not(feature = "crash_on_none"))]
     pub fn get(&self, key: &str) -> Option<&LuaType> {
         self.get_lua_type(key)
+    }
+
+    #[cfg(feature = "crash_on_none")]
+    pub fn get(&self, key: &str) -> &LuaType {
+        match self.get_lua_type(key) {
+            Some(value) => value,
+            None => panic!("Key {} not found in config", key),
+        }
     }
 
     pub fn get_lua_type(&self, key: &str) -> Option<&LuaType> {
