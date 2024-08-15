@@ -6,6 +6,7 @@ fn main() {
         .expect("Failed to load config")
         .with_default(include_bytes!("../include/config.default.lua"))
         .expect("Failed to load default config")
+        .with_version(env!("CARGO_PKG_VERSION"))
         .execute()
         .expect("Failed to execute config");
 

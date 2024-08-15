@@ -160,6 +160,7 @@ pub struct LuaConfig {
     pub data: LuaTable,
     config: String,
     default: Option<String>,
+    app_version: String,
 }
 
 impl LuaConfig {
@@ -168,7 +169,13 @@ impl LuaConfig {
             data: std::collections::HashMap::new(),
             config: file,
             default: None,
+            app_version: "0.0.0".to_string(),
         }
+    }
+
+    pub fn with_version(mut self, version: &str) -> Self {
+        self.app_version = version.to_string();
+        self
     }
 
     pub fn from_file(path: &str) -> Result<Self, Box<dyn Error>> {
@@ -183,14 +190,11 @@ impl LuaConfig {
 
     pub fn execute(mut self) -> Result<Self, Box<dyn Error>> {
         let lua = rlua::Lua::new();
-        let config_values = LuaConfig::get_hashmap_by_function(&lua, &self.config, "Config")?;
+        let config_values = self.get_hashmap_by_function(&lua, &self.config, "Config")?;
 
         if self.default.is_some() {
-            let default_values = LuaConfig::get_hashmap_by_function(
-                &lua,
-                &self.default.clone().unwrap(),
-                "Default",
-            )?;
+            let default_values =
+                self.get_hashmap_by_function(&lua, &self.default.clone().unwrap(), "Default")?;
 
             // Recursivly return error if any value in the config_values is not present in the default_values
             fn check_config_table(
@@ -266,8 +270,8 @@ impl LuaConfig {
         self.data.get(key)
     }
 
-    fn declare_lua_functions(ctx: &rlua::Context) -> Result<(), rlua::Error> {
-        let _globals = ctx.globals();
+    fn declare_lua_functions(&self, ctx: &rlua::Context) -> Result<(), rlua::Error> {
+        let globals = ctx.globals();
 
         let fetch_data = ctx.create_function(|lua_ctx, url: String| {
             let response = reqwest::blocking::get(url).expect("Failed to fetch data");
@@ -275,7 +279,20 @@ impl LuaConfig {
                 .expect("Failed to convert JSON to Lua table");
             Ok(table)
         })?;
-        _globals.set("fetch_data", fetch_data)?;
+        globals.set("fetch_data", fetch_data)?;
+
+        let app_version = self.app_version.clone();
+        let version = ctx.create_function(move |_, ()| Ok(app_version.clone()))?;
+        globals.set("version", version)?;
+
+        let build = ctx.create_function(|_, ()| {
+            if cfg!(debug_assertions) {
+                Ok("debug")
+            } else {
+                Ok("release")
+            }
+        })?;
+        globals.set("build", build)?;
 
         Ok(())
     }
@@ -325,12 +342,13 @@ impl LuaConfig {
     }
 
     fn get_hashmap_by_function<'lua>(
+        &self,
         lua: &'lua rlua::Lua,
         code: &str,
         function_name: &str,
     ) -> Result<std::collections::HashMap<String, LuaType>, Box<dyn Error>> {
         let ctx = lua.load(code);
-        LuaConfig::declare_lua_functions(&lua).unwrap();
+        self.declare_lua_functions(&lua).unwrap();
 
         ctx.exec()?;
         let globals = lua.globals();

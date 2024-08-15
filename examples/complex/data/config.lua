@@ -2,7 +2,7 @@ function Config()
 	local config = {
 		window = {
 			width = 800,
-			title = "The best game ever",
+			title = "The best game ever v" .. version() .. " (" .. build() .. ")",
 		},
 		graphics = {
 			x = 75,
