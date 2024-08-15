@@ -156,6 +156,7 @@ impl std::fmt::Display for LuaType {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct LuaConfig {
     pub data: LuaTable,
     config: String,
