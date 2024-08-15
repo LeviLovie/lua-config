@@ -53,8 +53,8 @@ fn main() {
         .execute()
         .expect("Failed to execute config");
 
-    println!("Width: {}\n", config.get::<i32>("width").unwrap());
-    println!("Height: {}\n", config.get::<i32>("height").unwrap());
+    println!("Width: {}\n", config.get("width").unwrap().to::<i32>().unwrap());
+    println!("Height: {}\n", config.get("height").unwrap().to::<i32>().unwrap());
     println!("Config:\n{}", config);
 }
 ```
@@ -69,6 +69,11 @@ height = Number(600)
 name = String("My Game")
 width = Integer(800)
 ```
+
+## Features
+
+### `crash_on_none`
+To avoid execive `.unwrap()` you can add `crash_on_none` feature. That way `get()` and `to<T>()` functions are gonna return `LuaType` and `T` without `Option` respectivly. I case of an error the library will panic. This is added to avoid `.unwrap()` everywere, and gives the same result of crashing.
 
 ## Contributing
 
